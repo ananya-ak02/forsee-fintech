@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  accounts      Account[]
+  subscriptions Subscription[]
+  goals         SavingsGoal[]
+  insights      Insight[]
+  tags          Tag[]
+}
+
+model Account {
+  id             String        @id @default(cuid())
+  userId         String
+  plaidAccountId String?
+  name           String
+  type           String
+  balance        Float         @default(0)
+  institution    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+
+  @@index([userId])
+}
+
+model Transaction {
+  id           String           @id @default(cuid())
+  accountId    String
+  amount       Float
+  type         String           @default("expense") // "income" | "expense"
+  category     String
+  aiCategory   String?          // AI-suggested category
+  merchantName String
+  date         DateTime
+  pending      Boolean          @default(false)
+  isFlagged    Boolean          @default(false)
+  flagReason   String?          // Reason for fraud flag
+  createdAt    DateTime         @default(now())
+  account      Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tags         TransactionTag[]
+
+  @@index([accountId])
+  @@index([date])
+  @@index([merchantName])
+  @@index([category])
+  @@index([isFlagged])
+}
+
+model Subscription {
+  id           String   @id @default(cuid())
+  userId       String
+  merchantName String
+  amount       Float
+  frequency    String   @default("monthly")
+  lastCharged  DateTime
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SavingsGoal {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  deadline      DateTime?
+  icon          String   @default("target") // lucide icon name
+  color         String   @default("#00F5A0")
+  isCompleted   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Insight {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "overspending" | "saving" | "trend" | "health" | "fraud"
+  title     String
+  message   String
+  severity  String   @default("info") // "info" | "warning" | "critical"
+  isRead    Boolean  @default(false)
+  data      String?  // JSON string for extra context
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+}
+
+model Tag {
+  id           String           @id @default(cuid())
+  userId       String
+  name         String
+  color        String           @default("#64748B")
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions TransactionTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TransactionTag {
+  transactionId String
+  tagId         String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, tagId])
+}
