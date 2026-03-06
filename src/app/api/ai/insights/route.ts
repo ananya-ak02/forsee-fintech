@@ -103,7 +103,7 @@ export async function GET() {
                             aiInsights = parsed.map((item: Record<string, string>, i: number) => ({
                                 id: `ai-insight-${i}`,
                                 ...item,
-                            }));
+                            }))as any;
                         }
                     } catch {
                         // Fall back to mock insights
